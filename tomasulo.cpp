@@ -99,11 +99,6 @@ RegisterStatus* find_reg(const string& name) {
     return nullptr;
 }
 
-// -------------------------------------------------------
-// PARSER DE ASSEMBLY
-// Suporta: L.D / LD, ADD.D, SUB.D, MUL.D, DIV.D
-// Formato: OP DEST, SRC1, SRC2   ou   L.D DEST, OFFSET(BASE)
-// -------------------------------------------------------
 OpType parse_op(const string& tok) {
     string u = to_upper(tok);
     if (u == "L.D"   || u == "LD")    return LD;
@@ -114,7 +109,7 @@ OpType parse_op(const string& tok) {
     throw runtime_error("Operacao desconhecida: " + tok);
 }
 
-// Remove vírgulas e espaços de um token
+//remover vírgulas e espaços de um token
 string clean_token(const string& s) {
     string r;
     for (char c : s)
@@ -139,7 +134,6 @@ Instruction parse_line(const string& line) {
         dest_tok = clean_token(dest_tok);
         src1_tok = clean_token(src1_tok);
 
-        // Extrai o registrador base do offset(REG)
         size_t pa = src1_tok.find('(');
         size_t pb = src1_tok.find(')');
         if (pa != string::npos && pb != string::npos)
@@ -188,7 +182,7 @@ bool load_program(const string& filename) {
 }
 
 // -------------------------------------------------------
-// CONFIGURAÇÃO DAS ESTAÇÕES VIA TERMINAL
+// CONFIGURAÇÃO DAS ESTAÇÕES NO TERMINAL
 // -------------------------------------------------------
 void config_stations() {
     cout << "\n  Configure as estacoes de reserva:\n";
@@ -215,17 +209,16 @@ void config_stations() {
             stations.push_back(st);
         }
     }
-    cin.ignore(1000, '\n'); // limpa buffer para o getline do Enter
+    cin.ignore(1000, '\n'); 
 }
 
 // -------------------------------------------------------
 // INICIALIZAÇÃO DOS REGISTRADORES
-// Registradores mencionados nas instruções, inicializados com valor = índice * 2
 // -------------------------------------------------------
 void init_registers() {
     auto ensure_reg = [&](const string& name) {
         if (name.empty()) return;
-        if (name[0] != 'F' && name[0] != 'f') return; // ignora R0, R2 etc.
+        if (name[0] != 'F' && name[0] != 'f') return; 
         for (auto& r : registers)
             if (r.name == name) return;
         int idx = registers.size();
@@ -324,7 +317,6 @@ void simulate_cycle() {
             inst.assigned_station = free_st->name;
 
             if (inst.op == LD) {
-                // Load: endereço resolvido imediatamente
                 free_st->qj = free_st->qk = "";
             } else {
                 RegisterStatus* rj = find_reg(inst.src1);
@@ -333,7 +325,6 @@ void simulate_cycle() {
                 if (rk) { if (rk->qi.empty()) free_st->vk = rk->value; else free_st->qk = rk->qi; }
             }
 
-            // Renomeação de registrador
             RegisterStatus* rd = find_reg(inst.dest);
             if (rd) rd->qi = free_st->name;
 
@@ -372,7 +363,6 @@ void simulate_cycle() {
         inst.cycle_write = current_cycle;
         inst.is_done     = true;
 
-        // Broadcast no CDB
         for (auto& other : stations) {
             if (!other.busy || &other == &st) continue;
             if (other.qj == cdb_station) { other.vj = cdb_value; other.qj = ""; }
@@ -389,7 +379,7 @@ void simulate_cycle() {
         st.vj = st.vk  = 0;
         st.time_left   = 0;
 
-        break; // apenas um write por ciclo
+        break;
     }
 }
 
@@ -399,13 +389,13 @@ bool simulation_done() {
     return true;
 }
 
-// -------------------------------------------------------
+
 int main(int argc, char* argv[]) {
     cout << "\n==========================================\n";
     cout << "  SIMULADOR DO ALGORITMO DE TOMASULO\n";
     cout << "==========================================\n";
 
-    // --- Entrada: arquivo assembly ---
+    //Entrada: arquivo assembly 
     string filename;
     if (argc >= 2) {
         filename = argv[1];
@@ -421,17 +411,17 @@ int main(int argc, char* argv[]) {
     for (size_t i = 0; i < instr_queue.size(); i++)
         cout << "  [" << i+1 << "] " << instr_queue[i].raw << "\n";
 
-    // --- Entrada: estações de reserva ---
+    //Entrada: estações de reserva
     config_stations();
 
-    // --- Inicializa registradores ---
+    //Inicializa registradores
     init_registers();
 
     cout << "\n  Latencias: LD=" << LAT_LD << "  ADD/SUB=" << LAT_ADD_SUB
          << "  MUL=" << LAT_MUL << "  DIV=" << LAT_DIV << "\n";
     cout << "  Pressione ENTER para avancar cada ciclo.\n";
 
-    // --- Loop de simulação ---
+    //Loop de simulação
     while (!simulation_done() && current_cycle <= 200) {
         simulate_cycle();
         print_state();
